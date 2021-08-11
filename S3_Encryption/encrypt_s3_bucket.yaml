@@ -1,21 +1,19 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: > 
-  Builds AWS resources that checks the encryption status of a newly created S3 bucket. 
-  An EventBridge rule is used to trigger a lambda, which then automatically adds default 
-  encryption to the bucket if the bucket is without encryption.
+Description: >
+  Builds AWS resources that checks the encryption status of a newly created S3 bucket.
+  An EventBridge rule is used to trigger a Lambda function, which then automatically adds default
+  encryption to the bucket.
 
 Resources:
-
-  ################################################
+  #----------------------------------
   # EventBridge
-  ################################################
-
+  #----------------------------------
   BucketEncryptionEventRule:
     Type: AWS::Events::Rule
-    Properties: 
+    Properties:
       Description: Identifies S3 bucket creation events
       State: ENABLED # by default
-      Targets: 
+      Targets:
         - Arn: !GetAtt BucketEncyptAutoremediationFunction.Arn
           Id: TargetBucketEncyptAutoremediationFunction
       EventPattern:
@@ -29,11 +27,9 @@ Resources:
           eventName:
             - CreateBucket
 
-
-  ###############################################
-  # Lambda Function
-  ###############################################
-
+  #----------------------------------
+  # Lambda
+  #----------------------------------
   BucketEncyptAutoremediationFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -41,20 +37,20 @@ Resources:
       Runtime: python3.8
       Role: !GetAtt BucketEncryptAutoremediationFunctionRole.Arn
       Timeout: 300
-      Code: 
+      Code:
         ZipFile: |
           import boto3
           from botocore.exceptions import ClientError
           import logging
 
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
 
           def lambda_handler(event, context):
-              """Lambda function triggered by EventBridge rule that detects the 
+              """Lambda function triggered by EventBridge rule that detects the
               creation of an S3 bucket.
               """
-
-              logger: logging.Logger = log(__name__.upper())
-              logger.info(f'**** Event Info for CreateBucket API Call **** {event}')
 
               try:
                   # gather data from event
@@ -65,14 +61,13 @@ Resources:
                   account_id = detail['userIdentity']['accountId']
 
                   check_encryption_status(bucket_name, s3, account_id, logger)
-              
+
               except ClientError as e:
                   logger.info(
-                      f'ClientError exception is: {e}. Bucket {bucket_name} has no bucket encryption configured. Enabling encryption...'
+                      f'{e}. Enabling encryption on Bucket {bucket_name}...'
                       )
 
                   set_up_encryption(s3, bucket_name, account_id, logger)
-
                   check_encryption_status(bucket_name, s3, account_id, logger)
 
               except Exception as e:
@@ -104,20 +99,6 @@ Resources:
               )
               return response
 
-
-          def log(name='aws_entity', logging_level=logging.INFO) -> logging.Logger:
-              """Instantiate a logger
-              """
-              logger: logging.Logger = logging.getLogger(name)
-              if len(logger.handlers) < 1:
-                  log_handler: logging.StreamHandler = logging.StreamHandler()
-                  formatter: logging.Formatter = logging.Formatter('%(levelname)-8s %(asctime)s %(name)-12s %(message)s')
-                  log_handler.setFormatter(formatter)
-                  logger.propagate = False
-                  logger.addHandler(log_handler)
-                  logger.setLevel(logging_level)
-              return logger
-
   BucketEncryptAutoremediationFunctionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -132,20 +113,20 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
-      Policies: 
+      Policies:
         - PolicyName: CheckEncryptionStatusAndAddBucketEncryption
           PolicyDocument:
             Version: 2012-10-17
             Statement:
               - Effect: Allow
-                Action: 
+                Action:
                   - s3:GetEncryptionConfiguration
                   - s3:PutEncryptionConfiguration
                 Resource: "*"
 
-  PermissionForEventsToInvokeLambda: 
+  PermissionForEventsToInvokeLambda:
     Type: AWS::Lambda::Permission
-    Properties: 
+    Properties:
       FunctionName: !Ref BucketEncyptAutoremediationFunction
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"

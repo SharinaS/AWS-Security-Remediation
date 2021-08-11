@@ -3,6 +3,9 @@
 # Ignore packaged CloudFormation templates
 packaged.yaml
 
+# Ignore diagram files
+*.drawio
+
 ### Linux ###
 *~
 
