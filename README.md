@@ -4,6 +4,6 @@ CloudFormation templates and Python-built Lambda functions that add automation t
 
 Topics:
 
-* Automatically encryption a newly created S3 Bucket - [go to the directory](https://github.com/SharinaS/AWS-Security-Remediation/tree/main/S3_Encryption)
+* Automatically add encryption to a newly created S3 Bucket - [go to the README file](https://github.com/SharinaS/AWS-Security-Remediation/tree/main/S3_Encryption)
 
 
