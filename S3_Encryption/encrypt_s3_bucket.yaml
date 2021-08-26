@@ -8,14 +8,15 @@ Resources:
   #----------------------------------
   # EventBridge
   #----------------------------------
-  BucketEncryptionEventRule:
+
+  CreateBucketEventRule:
     Type: AWS::Events::Rule
     Properties:
       Description: Identifies S3 bucket creation events
       State: ENABLED # by default
       Targets:
-        - Arn: !GetAtt BucketEncyptAutoremediationFunction.Arn
-          Id: TargetBucketEncyptAutoremediationFunction
+        - Arn: !GetAtt EncryptBucketFunction.Arn
+          Id: TargetEncryptBucketFunction
       EventPattern:
         source:
           - aws.s3
@@ -30,12 +31,12 @@ Resources:
   #----------------------------------
   # Lambda
   #----------------------------------
-  BucketEncyptAutoremediationFunction:
+  EncryptBucketFunction:
     Type: AWS::Lambda::Function
     Properties:
-      Handler: "index.lambda_handler"
+      Handler: index.lambda_handler
       Runtime: python3.8
-      Role: !GetAtt BucketEncryptAutoremediationFunctionRole.Arn
+      Role: !GetAtt EncryptBucketFunctionRole.Arn
       Timeout: 300
       Code:
         ZipFile: |
@@ -99,7 +100,7 @@ Resources:
               )
               return response
 
-  BucketEncryptAutoremediationFunctionRole:
+  EncryptBucketFunctionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -127,7 +128,7 @@ Resources:
   PermissionForEventsToInvokeLambda:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref BucketEncyptAutoremediationFunction
+      FunctionName: !Ref EncryptBucketFunction
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
-      SourceArn: !GetAtt BucketEncryptionEventRule.Arn
+      SourceArn: !GetAtt CreateBucketEventRule.Arn
